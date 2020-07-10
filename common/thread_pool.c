@@ -6,10 +6,26 @@
  ************************************************************************/
 
 #include "head.h"
-
+extern int repollfd, bepollfd;
 void do_work(struct User *user){
     //
     //收到一条信息，并打印。
+    struct ChatMsg msg;
+    recv(user->fd, (void *)&msg, sizeof(msg), 0);
+    if (msg.type & CHAT_WALL) {
+        printf("<%s> ~ %s\n", user->name, msg.msg);
+        
+    } else if (msg.type & CHAT_MSG) {
+        printf("<%s> $ %s\n", user->name, msg.msg);
+
+    } else if (msg.type & CHAT_FIN) {
+        user->online = 0;
+        int epollfd = user->team ? bepollfd : repollfd;
+        del_event(epollfd, user->fd);
+        printf(GREEN"Server Info"NONE" : %s logout!\n", user->name);
+        close(user->fd);
+    }
+    printf("<%s> : %s\n", user->name, buff);
     DBG("In do_work %s\n", user->name);
 }
 

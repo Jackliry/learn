@@ -7,6 +7,54 @@
 
 #include "head.h"
 extern int port;
+extern struct User *rteam;
+extern struct User *bteam;
+extern int repollfd, bepollfd;
+//epollfd为从反应堆，fd为客户，事件，具体谁
+void add_event_ptr(int epollfd, int fd, int events, struct User *user) {
+
+	struct epoll_event ev;
+	ev.events = events;
+	ev.data.ptr = (void *)user;
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
+}
+//从哪一个反应堆删除，客户
+void del_event(int epollfd, int fd) {
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+}
+
+int find_sub(struct User *team) {
+    for (int i = 0; i < MAX; i++) {
+        if (!team[i].online) return i;
+    } 
+    return -1;
+} 
+
+void add_to_sub_reactor(struct User *user) {
+ 
+    struct User *team = (user->team ? bteam : rteam);
+    int sub = find_sub(team);
+    if (sub < 0) {
+        fprintf(stderr, "Full Team!\n");
+        return ;
+    }
+    team[sub] = *user;     //找到了不在线的
+    team[sub].online = 1;  //将新来的用户加入
+    team[sub].flag = 10;
+    DBG(L_RED"sub = %d, name = %s\n", sub, team[sub].name);
+    if (user->team) 
+    add_event_ptr(bepollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
+    add_event_ptr(repollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
+}
+
+//判断是否已经在线
+int check_online(struct LogRequest *request) {
+    for (int i = 0; i < MAX; i++) {
+        if (rteam[i].online && !strcmp(request->name, rteam[i].name))return 1;
+        if (bteam[i].online && !strcmp(request->name, bteam[i].name))return 1;
+    }
+    return 0;
+}
 
 int udp_connect(struct sockaddr_in *client) {
     int sockfd;

@@ -15,12 +15,25 @@ char log_msg[512] = {0};
 char *conf = "./football.conf";
 int sockfd = -1;
 
+voi logout(int signum) {
+    struct ChatMsg msg;
+    msg.type = CHAT_FIN;
+    send(sockfd, (void *)&msg, sizeof(msg), 0);
+    DBG(RED"Bye!\n"NONE);
+    close(sockfd);
+}
+
+
 int main(int argc, char **argv) {
     int opt;
+    struct LogRequest request; 
+    struct LogResponse response;
+    bzero(&request, sizeof(request));
+    bzero(&response, sizeof(response));
     while ((opt = getopt(argc, argv, "h:p:t:m:n:")) != -1) {
         switch (opt) {
             case 't':
-                team = atoi(optarg);
+                request.team = atoi(optarg);
                 break;
             case 'h':
                 strcpy(server_ip, optarg);
@@ -29,10 +42,10 @@ int main(int argc, char **argv) {
                 server_port = atoi(optarg);
                 break;
             case 'm':
-                strcpy(log_msg, optarg);
+                strcpy(request.msg, optarg);
                 break;
             case 'n':
-                strcpy(name, optarg);
+                strcpy(request.name, optarg);
                 break;
             default:
                 fprintf(stderr, "Usage : %s [-hptmn]!\n", argv[0]);
@@ -42,14 +55,14 @@ int main(int argc, char **argv) {
     
 
     if (!server_port) server_port = atoi(get_conf_value(conf, "SERVERPORT"));
-    if (!team) team = atoi(get_conf_value(conf, "TEAM"));
+    if (!request.team)request.team = atoi(get_conf_value(conf, "TEAM"));
     if (!strlen(server_ip)) strcpy(server_ip, get_conf_value(conf, "SERVERIP"));
-    if (!strlen(name)) strcpy(name, get_conf_value(conf, "NAME"));
-    if (!strlen(log_msg)) strcpy(log_msg, get_conf_value(conf, "LOGMSG"));
+    if (!strlen(request.name)) strcpy(request.name, get_conf_value(conf, "NAME"));
+    if (!strlen(request.msg)) strcpy(request.msg, get_conf_value(conf, "LOGMSG"));
 
 
     DBG("<"GREEN"Conf Show"NONE"> : server_ip = %s, port = %d, team = %s, name = %s\n%s",\
-        server_ip, server_port, team ? "BLUE": "RED", name, log_msg);
+        server_ip, server_port, request.team? "BLUE": "RED", request.name, request.msg);
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
@@ -63,7 +76,45 @@ int main(int argc, char **argv) {
         exit(1);
     }
     
-    sendto(sockfd, log_msg, strlen(log_msg), 0, (struct sockaddr *)&server, len);
+    sendto(sockfd, (void *)&request, sizeof(request), 0, (struct sockaddr *)&server, len);
 
+    int rc, ret;
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(sockfd, &rfds);
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    rc = select(sockfd + 1, &rfds, NULL, NULL, &tv);
+    if (rc < 0) {
+        perror("select()");
+        exit(1);
+    } else if (rc) { //从哪一个套接字收，放到哪里，大小，0，地址
+        ret = recvfrom(sockfd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&server, &len);
+        if (ret != sizeof(response) || response.type == 1) {
+            DBG(RED"ERROR:"NONE"Server refused your login request.\n %s\n", response.msg);
+            exit(1);
+        }
+    } else {
+        DBG(RED"ERROR:"NONE"Server is out of service.\n");
+        exit(1);
+    }
+    DBG(GREEN"SERVER:"NONE"%s\n",response.msg);
+    //
+   // char buff[512] = {0};
+    //connect(sockfd, (struct sockaddr *)&server, len);
+    //sprintf(buff, "suyelu is always 18 years old.");
+    //send(sockfd, buff, strlen(buff), 0);
+    //recv(sockfd, buff, sizeof(buff), 0);
+    signal(SIGINT, logout);
+    while(1) {
+        struct ChatMsg msg;
+        msg.type = CHAT_WALL;
+        DBG(RED"Server Info"NONE" : %s", buff);
+        printf("Please input message:\n");
+        scanf("%[^\n]s", msg.msg);
+        getchar();
+        send(sockfd, (void *)&msg, sizeof(msg), 0);
+    }
     return 0;
 }
