@@ -33,17 +33,30 @@ int find_sub(struct User *team) {
 void add_to_sub_reactor(struct User *user) {
  
     struct User *team = (user->team ? bteam : rteam);
+    if (user->team) {
+        pthread_mutex_lock(&bmutex);
+    } else {
+        pthread_mutex_lock(&rmutex);
+    }
+
     int sub = find_sub(team);
     if (sub < 0) {
         fprintf(stderr, "Full Team!\n");
         return ;
     }
+
     team[sub] = *user;     //找到了不在线的
     team[sub].online = 1;  //将新来的用户加入
     team[sub].flag = 10;
     DBG(L_RED"sub = %d, name = %s\n", sub, team[sub].name);
-    if (user->team) 
+    if (user->team) {
+        pthread_mutex_unlock(&bmutex);
+    } else {
+        pthread_mutex_unlock(&rmutex);
+    }
+    if (user->team)
     add_event_ptr(bepollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
+    else
     add_event_ptr(repollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
 }
 
@@ -87,26 +100,32 @@ int udp_accept(int fd, struct User *user) {
         return -1;
     }
     
-   /* if (check_online(&request)) {
+   if (check_online(&request)) {
         response.type = 1;
         strcpy(response.msg, "You are Already Login!");
         sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
         return -1;
-    }*/
+    }
 
-    response.type = 0;
-    strcpy(response.msg, "Login Success. Enjoy yourself!");
-    sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
+   // response.type = 0;
+   // strcpy(response.msg, "Login Success. Enjoy yourself!");
+  // sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
     
     if (request.team) {
         DBG(GREEN"Info"NONE" : "BLUE"%s login on %s:%d  <%s>\n", request.name, inet_ntoa(client.sin_addr), ntohs(client.sin_port), request.msg);
     } else {
         DBG(GREEN"Info"NONE" : "RED"%s login on %s:%d   <%s>\n", request.name, inet_ntoa(client.sin_addr), ntohs(client.sin_port), request.msg);
     }
-
+    
+    strcpy(user->ip, inet_ntoa(client.sin_addr));
     strcpy(user->name, request.name);
     user->team = request.team;
     new_fd = udp_connect(&client);
     user->fd = new_fd;
+
+    response.type = 0;
+    strcpy(response.msg, "Login Success. Enjoy yourself!");
+    //sprintf(" Login Success, Enjoy Yourself!\n");
+    send(new_fd, (void*)&response, sizeof(response), 0);
     return new_fd;
 }

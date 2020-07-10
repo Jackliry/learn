@@ -10,8 +10,6 @@
 int server_port = 0;
 char server_ip[20] = {0};
 int team = -1;
-char name[20] = {0};
-char log_msg[512] = {0};
 char *conf = "./football.conf";
 int sockfd = -1;
 
@@ -23,6 +21,26 @@ void logout(int signum) {
     close(sockfd);
     exit(0);
 }
+
+void *do_recv(void *arg)
+{
+    while(1){
+        struct ChatMsg msg;
+        bzero(&msg, sizeof(msg));
+        int ret = recv(sockfd, (void *)&msg, sizeof(msg), 0);
+        if(msg.type & CHAT_WALL){
+            printf(BLUE"%s"NONE" : %s\n", msg.name, msg.msg);
+        } else if(msg.type & CHAT_MSG){
+            printf(RED"%s"NONE": %s\n", msg.name, msg.msg);
+        } else if(msg.type & CHAT_SYS){
+            printf(YELLOW"Server Info"NONE": %s\n", msg.msg);
+        } else if (msg.type & CHAT_FIN){
+            printf(L_RED"Server Info"NONE"Server Down!\n");
+            exit(1);
+        }
+    }
+}
+
 
 
 int main(int argc, char **argv) {
@@ -101,22 +119,26 @@ int main(int argc, char **argv) {
         exit(1);
     }
     DBG(GREEN"SERVER:"NONE"%s\n",response.msg);
-    //
-   // char buff[512] = {0};
-    //connect(sockfd, (struct sockaddr *)&server, len);
-    //sprintf(buff, "suyelu is always 18 years old.");
-    //send(sockfd, buff, strlen(buff), 0);
-    //recv(sockfd, buff, sizeof(buff), 0);
+    connect(sockfd, (struct sockaddr *)&server, len);
+    
+    pthread_t recv_t;
+    pthread_create(&recv_t, NULL, do_recv, NULL);
+    struct ChatMsg msg;
+
     signal(SIGINT, logout);
     while(1) {
-        struct ChatMsg msg;
+        bzero(&msg, sizeof(msg));
         msg.type = CHAT_WALL;
-        DBG(RED"Server Info"NONE" : %s", buff);
-        printf("Please input message:\n");
+        printf(RED"Please input :\n"NONE);
         scanf("%[^\n]s", msg.msg);
         getchar();
-        send(sockfd, (void *)&msg, sizeof(msg), 0);
-        printf("%s\n", msg.msg);
+        if(strlen(msg.msg)){
+            if(msg.msg[0] == '@')
+                msg.type = CHAT_MSG;
+            if(msg.msg[0] == '#')
+                msg.type = CHAT_FUNC;
+            send(sockfd, (void *)&msg, sizeof(msg), 0);
+        }
     }
     return 0;
 }
