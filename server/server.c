@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     socklen_t len = sizeof(client);
 
     while (1) {
-        DBG(YELLOW"Main Reactor"NONE" : Waiting for clienti.\n");
+        DBG(YELLOW"Main Reactor"NONE" : Waiting for client.\n");
         int nfds = epoll_wait(epollfd, events, MAX * 2, -1); 
         if (nfds < 0) {
             perror("epoll_wait()");

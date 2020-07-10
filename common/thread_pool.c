@@ -25,8 +25,8 @@ void do_work(struct User *user){
         printf(GREEN"Server Info"NONE" : %s logout!\n", user->name);
         close(user->fd);
     }
-    printf("<%s> : %s\n", user->name, buff);
-    DBG("In do_work %s\n", user->name);
+    //printf("<%s> : %s\n", user->name, buff);
+    //DBG("In do_work %s\n", user->name);
 }
 
 void task_queue_init(struct task_queue *taskQueue, int sum, int epollfd) {

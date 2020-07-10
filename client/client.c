@@ -15,12 +15,13 @@ char log_msg[512] = {0};
 char *conf = "./football.conf";
 int sockfd = -1;
 
-voi logout(int signum) {
+void logout(int signum) {
     struct ChatMsg msg;
     msg.type = CHAT_FIN;
     send(sockfd, (void *)&msg, sizeof(msg), 0);
     DBG(RED"Bye!\n"NONE);
     close(sockfd);
+    exit(0);
 }
 
 
@@ -115,6 +116,7 @@ int main(int argc, char **argv) {
         scanf("%[^\n]s", msg.msg);
         getchar();
         send(sockfd, (void *)&msg, sizeof(msg), 0);
+        printf("%s\n", msg.msg);
     }
     return 0;
 }
