@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
     while (1) {
         DBG(L_RED"Main Reactor"NONE" : Waiting for client.\n");
-        int nfds = epoll_wait(taskQueue->epollfd, events, MAX * 2, -1); 
+        int nfds = epoll_wait(epollfd, events, MAX * 2, -1); 
         if (nfds < 0) {
             perror("epoll_wait()");
             exit(1);

@@ -49,9 +49,12 @@ void do_work(struct User *user){
     bzero(&msg, sizeof(msg));
     bzero(&r_msg, sizeof(r_msg));
     recv(user->fd, (void *)&msg, sizeof(msg), 0);
+   // sprintf(r_msg.msg, "你的好友 "RED"%s"NONE"上线了，快打个招呼吧！",user->name);
     if (msg.type & CHAT_WALL) {
         printf("<%s> ~ %s\n", user->name, msg.msg);
-        send_all(&msg);
+        strcpy(msg.name, user->name);
+        r_msg.type = CHAT_SYS;
+        send_all(&r_msg);
     } else if (msg.type & CHAT_MSG) {
         char to[20] = {0};
         int i = 1;
@@ -65,14 +68,17 @@ void do_work(struct User *user){
             send(user->fd, (void *)&r_msg, sizeof(r_msg), 0);
         } else {
             msg.type = CHAT_MSG;
+            strcpy(msg.name, user->name);
             strncpy(to, msg.msg + 1, i - 1);
             send_to(to, &msg, user->fd);
         }
 
+
     } else if (msg.type & CHAT_FIN) {
         bzero(msg.msg, sizeof(msg.msg));
         msg.type = CHAT_SYS;
-        sprintf(msg.msg ,"注意：我们的好朋友 %s 要下线了！\n", msg.name);
+        sprintf(msg.msg ,"注意：我们的好朋友 %s 要下线了！\n", user->name);
+        strcpy(msg.name, user->name);
         send_all(&msg);
         if (user->team)
             pthread_mutex_lock(&bmutex);

@@ -10,6 +10,7 @@ extern int port;
 extern struct User *rteam;
 extern struct User *bteam;
 extern int repollfd, bepollfd;
+extern pthread_mutex_t bmutex, rmutex;
 //epollfd为从反应堆，fd为客户，事件，具体谁
 void add_event_ptr(int epollfd, int fd, int events, struct User *user) {
 
@@ -56,8 +57,13 @@ void add_to_sub_reactor(struct User *user) {
     }
     if (user->team)
     add_event_ptr(bepollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
-    else
+    else//
     add_event_ptr(repollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
+    struct ChatMsg r_msg;
+    void send_all (struct ChatMsg *msg);
+    sprintf(r_msg.msg, "你的好友 "RED"%s"NONE"上线了，快打个招呼吧！",user);
+    r_msg.type = CHAT_SYS;
+    send_all(&r_msg);
 }
 
 //判断是否已经在线
