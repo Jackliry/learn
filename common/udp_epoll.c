@@ -116,8 +116,6 @@ int udp_accept(int fd, struct User *user) {
     } else {
         DBG(GREEN"Info"NONE" : "RED"%s login on %s:%d   <%s>\n", request.name, inet_ntoa(client.sin_addr), ntohs(client.sin_port), request.msg);
     }
-    
-    strcpy(user->ip, inet_ntoa(client.sin_addr));
     strcpy(user->name, request.name);
     user->team = request.team;
     new_fd = udp_connect(&client);
